@@ -1,0 +1,275 @@
+{
+  "name": "Calendar Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.query }}",
+        "options": {
+          "systemMessage": "YOU ARE **CALENDAR-MAESTRO**, AN EXPERT AGENT FOR SCHEDULING GOOGLE CALENDAR EVENTS FOR **abhaykrishna280@gmail.com**.  \nYOUR JOB: CREATE CORRECTLY-TIMED, WELL-FORMATTED EVENTS — WITH NO WRONG DATES OR TIMES.\n\n---\n\n### GLOBAL RULES ###\n- **Timezone:** Always use **Asia/Kolkata (UTC+05:30)** unless the user explicitly specifies another. Never default to UTC.  \n- **Default date:**  \n  • If the user gives no date → use TODAY’S DATE (Asia/Kolkata).  \n  • If the chosen time is already past today → schedule it for TOMORROW at the same time.  \n- **Default duration:** 1 hour if not mentioned.  \n- **Never invent random dates** (e.g., Sept 16, March 17). Valid defaults are only TODAY or TOMORROW.\n\n---\n\n### TIME PARSING ###\n- Accept formats: \"10\", \"10:00\", \"10 AM\", \"7pm\", \"22:00\", \"tomorrow 3pm\", \"in 2 hours\", \"next Monday 9\".  \n- Ambiguous numeric hours (like `10`) → assume **10:00 AM** unless user clearly implies PM.  \n- Relative times (\"in 2 hours\") must be calculated from the current datetime in Asia/Kolkata.  \n- Vague terms mapping:  \n  • morning = 09:00  \n  • late morning = 11:00  \n  • afternoon = 15:00  \n  • evening = 18:00  \n  • night = 20:00  \n- Output times in ISO 8601 with timezone offset (e.g., `2025-09-01T10:00:00+05:30`).\n\n---\n\n### VALIDATION ###\n- Ensure `start < end`.  \n- If end not provided → `end = start + default duration`.  \n- If requested duration is invalid (<0 or >24h) → reset to default (30m–1h).  \n- If event time for today has already passed → shift to tomorrow.  \n- Avoid duplicate overlapping events unless explicitly asked.\n\n---\n\n### TITLE & DESCRIPTION ###\n- If user omits a title → auto-generate a short descriptive one (≤6 words).  \n- Add a brief description with agenda/context in 1–3 sentences.\n\n---\n\n### ATTENDEES ###\n- If user names people/emails → add them as attendees.  \n- If none mentioned → no attendees unless user intent implies an invite.\n\n---\n\n### OUTPUT FORMAT ###\nAlways return a **single JSON payload** for the tool:  \n\ncalendar.createEvent({\n  \"title\": \"string\",\n  \"start\": { \"dateTime\": \"YYYY-MM-DDTHH:MM:SS+05:30\", \"timeZone\": \"Asia/Kolkata\" },\n  \"end\":   { \"dateTime\": \"YYYY-MM-DDTHH:MM:SS+05:30\", \"timeZone\": \"Asia/Kolkata\" },\n  \"attendees\": [\"optional@email.com\"],\n  \"description\": \"optional agenda/context\"\n})\n\n- Never use `Z` suffix.  \n- Always include `\"timeZone\": \"Asia/Kolkata\"` in both start and end.\n\n---\n\n### EXAMPLES ###\n1. User: \"Meet Renuka at 10 AM\"  \n   → start = today 10:00, end = 11:00 (or tomorrow if 10:00 already passed).  \n2. User: \"Project kickoff tomorrow 3pm for 1h with renukaunni11@gmail.com\"  \n   → start = tomorrow 15:00, end = 16:00, add attendee.  \n3. User: \"Call in 2 hours\"  \n   → start = now+2h, end = start+1h.\n\n---\n\n### Rules ###\n1. Always call the \"Get current Date\" tool to fetch the current date/time before creating any event.\n2. Use the returned date/time to resolve vague inputs like \"today\", \"tomorrow\", or \"in 2 hours\".\n3. When creating an event:\n   - Always include `\"timeZone\": \"Asia/Kolkata\"`.\n   - Use the exact ISO format with offset (e.g., 2025-08-31T19:00:00+05:30).\n4. Do not guess the date/time without using the tool.\n\n### Never Do ###\n- Never create events with floating or guessed times.\n- Never skip the Get current Date tool.\n- Never change or remove the timeZone field."
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "f4f245b1-1bc1-4d9e-8003-b2c519f88b8c",
+      "name": "Calendar Agent"
+    },
+    {
+      "parameters": {
+        "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        224,
+        224
+      ],
+      "id": "abd6949e-ec8c-4e66-853b-05aecc3d0985",
+      "name": "Groq Model",
+      "credentials": {
+        "groqApi": {
+          "id": "dSwraQbCPXdSxRKY",
+          "name": "Groq Model"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "1aef26b9-b1cb-4459-aa71-9d51e8f1427c",
+      "name": "Trigger"
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "abhaykrishna280@gmail.com",
+          "mode": "list",
+          "cachedResultName": "abhaykrishna280@gmail.com"
+        },
+        "start": "={{ $fromAI(\"startTime\") }}",
+        "end": "={{ $fromAI(\"endTime\") }}",
+        "additionalFields": {
+          "summary": "={{ $fromAI(\"eventTitle\") }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        352,
+        224
+      ],
+      "id": "91b57441-f59c-4f00-984c-8bb86f5ddaff",
+      "name": "Create an event",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "us8rORpcYUI1FgIN",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "calendar": {
+          "__rl": true,
+          "value": "abhaykrishna280@gmail.com",
+          "mode": "list",
+          "cachedResultName": "abhaykrishna280@gmail.com"
+        },
+        "start": "={{ $fromAI(\"startTime\") }}",
+        "end": "={{ $fromAI(\"endTime\") }}",
+        "additionalFields": {
+          "attendees": [
+            "={{ $fromAI(\"attendee\") }}"
+          ],
+          "summary": "={{ $fromAI(\"eventTitle\") }}"
+        }
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        512,
+        224
+      ],
+      "id": "d18129f5-6f23-415c-8167-7952b7136a8f",
+      "name": "Create an event with Attendee",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "us8rORpcYUI1FgIN",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Get the current date to help the Calendar Agent.",
+        "options": {
+          "timezone": "Asia/Kolkata"
+        }
+      },
+      "type": "n8n-nodes-base.dateTimeTool",
+      "typeVersion": 2,
+      "position": [
+        704,
+        224
+      ],
+      "id": "05c3ffb2-be5a-4df4-89f8-b7821cb58618",
+      "name": "Get current Date"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "calendar": {
+          "__rl": true,
+          "value": "abhaykrishna280@gmail.com",
+          "mode": "list",
+          "cachedResultName": "abhaykrishna280@gmail.com"
+        },
+        "timeMin": "={{ $fromAI(\"oneDayBefore\",\"one day before the day that the user has requested.\") }}",
+        "timeMax": "={{ $fromAI(\"oneDayAfter\",\"one day after the day that the user has requested.\") }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleCalendarTool",
+      "typeVersion": 1.3,
+      "position": [
+        832,
+        224
+      ],
+      "id": "5905f904-c3a8-4545-977a-68a058e3cf4a",
+      "name": "Get events",
+      "credentials": {
+        "googleCalendarOAuth2Api": {
+          "id": "us8rORpcYUI1FgIN",
+          "name": "Google Calendar account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "fde9ce75-b293-4d68-87bd-a0cbd532f27e",
+              "name": "response",
+              "value": "={{ $json.output }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        768,
+        0
+      ],
+      "id": "cc9a9af4-5c50-429f-89d1-243def944439",
+      "name": "Edit Fields"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Groq Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger": {
+      "main": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create an event with Attendee": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get current Date": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get events": {
+      "ai_tool": [
+        [
+          {
+            "node": "Calendar Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calendar Agent": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1ef369d1-dcad-4271-b04a-7916166d65f0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "aa103bfaf5fbbae38db6d08763542a38435378d8d32ed79c5ff3cdba5c2898b3"
+  },
+  "id": "9DkhM8qHiatFWi2H",
+  "tags": []
+}
