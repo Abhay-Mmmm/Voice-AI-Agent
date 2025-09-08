@@ -1,9 +1,9 @@
-# Voice-AI-Agent
+# AI-Agent
 
 
 ## Overview
 
-**Voice-AI-Agent** is a modular AI-powered automation suite built with n8n, designed to handle calendar scheduling, email management, research, and conversational tasks. Each agent is specialized for a domain and can be orchestrated together for advanced workflows.
+**AI-Agent** is a modular AI-powered automation suite built with n8n, designed to handle calendar scheduling, email management, research, and conversational tasks. Each agent is specialized for a domain and can be orchestrated together for advanced workflows.
 
 > **Note:** This project has not been deployed.
 
